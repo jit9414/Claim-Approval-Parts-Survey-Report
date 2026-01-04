@@ -142,7 +142,7 @@ or physical confirmation. Kindly verify the details before work initiation.
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbx0UmnP54gpviRxPCso9rGyBWfFsZERiPM7R7caQf94NV9xQpmgW4ygN_rhKGMx7Zw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxINVWdtlJK2R3KT2N4H9j4iGjNksr2Nvw5_cbINPMN5NTI3U_9gXa054tgqzWhex0bRA/exec";
 let a=1,l=1,p=1;
 
 function addApproved(){
@@ -196,66 +196,111 @@ pendingTable.insertAdjacentHTML("beforeend",`
 }
 
 function saveReport(){
-let rows=[];
 
-function collect(table,section){
-[...table.querySelectorAll("tr")].slice(1).forEach(r=>{
-const i=r.querySelectorAll("input,textarea,select");
-if(!i.length)return;
-rows.push({
-sectionType:section,
-sr:i[0].value||"",
-type:i[1]?.value||"",
-partNo:i[1]?.value||"",
-description:i[2]?.value||"",
-qty:i[3]?.value||"",
-amount:i[4]?.value||"",
-remark:i[4]?.value||"",
-status:i[4]?.value||""
-});
-});
-}
+  let rows = [];
 
-collect(approvedTable,"APPROVED");
-collect(labourTable,"LABOUR");
-collect(pendingTable,"PENDING");
+  /* ===== APPROVED PARTS ===== */
+  document.querySelectorAll("#approvedTable tr").forEach((tr, idx)=>{
+    if(idx === 0) return;
 
-fetch(API_URL,{
-method:"POST",
-body:JSON.stringify({
-insurance:insurance.value,
-surveyor:surveyor.value,
-surveyMobile:surveyMobile.value,
-customer:customer.value,
-customerMobile:customerMobile.value,
-frame:frame.value,
-jobcard:jobcard.value,
-intimation:intimation.value,
-surveyDate:surveyDate.value,
-rows:rows
-})
-}).then(()=>alert("Report Saved Successfully"));
-}
+    const tds = tr.querySelectorAll("td");
+    const inputs = tr.querySelectorAll("input, textarea");
 
-function downloadPendingPDF(){
-const {jsPDF}=window.jspdf;
-const doc=new jsPDF();
-let y=15;
+    if(inputs.length < 3) return;
 
-doc.text("Pending Approval Request",70,y);y+=10;
-doc.setFontSize(10);
-doc.text(
-"Dear Sir / Madam,\n\nFollowing parts/labour are pending for approval.\nPhotos & videos already shared.\nKindly approve to proceed further.\n",
-10,y);
-y+=30;
+    rows.push({
+      sectionType: "APPROVED",
+      sr: tds[0].innerText,
+      type: "PART",
+      partNo: inputs[0].value,
+      description: inputs[1].value,
+      qty: inputs[2].value,
+      amount: "",
+      remark: inputs[3].value || "",
+      status: "APPROVED"
+    });
+  });
 
-[...pendingTable.querySelectorAll("tr")].slice(1).forEach((r,i)=>{
-const c=r.querySelectorAll("input,textarea,select");
-doc.text(`${i+1}. ${c[0].value} | ${c[1].value} | Qty:${c[2].value}`,10,y);
-y+=6;
-});
+  /* ===== LABOUR ===== */
+  document.querySelectorAll("#labourTable tr").forEach((tr, idx)=>{
+    if(idx === 0) return;
 
-doc.save("Pending_Approval_Request.pdf");
+    const tds = tr.querySelectorAll("td");
+    const typeSel = tr.querySelector("select");
+    const inputs = tr.querySelectorAll("input, textarea");
+
+    if(!typeSel || inputs.length < 3) return;
+
+    rows.push({
+      sectionType: "LABOUR",
+      sr: tds[0].innerText,
+      type: typeSel.value,
+      partNo: "",
+      description: inputs[0].value,
+      qty: inputs[1].value,
+      amount: inputs[2].value,
+      remark: "",
+      status: "APPROVED"
+    });
+  });
+
+  /* ===== PENDING ===== */
+  document.querySelectorAll("#pendingTable tr").forEach((tr, idx)=>{
+    if(idx === 0) return;
+
+    const tds = tr.querySelectorAll("td");
+    const inputs = tr.querySelectorAll("input, textarea");
+    const statusSel = tr.querySelector("select");
+
+    if(inputs.length < 2 || !statusSel) return;
+
+    rows.push({
+      sectionType: "PENDING",
+      sr: tds[0].innerText,
+      type: inputs[0].value,
+      partNo: "",
+      description: inputs[1].value,
+      qty: inputs[2]?.value || "",
+      amount: "",
+      remark: "",
+      status: statusSel.value
+    });
+  });
+
+  if(rows.length === 0){
+    alert("❌ Koi data add nahi kiya gaya");
+    return;
+  }
+
+  /* ===== SEND TO GOOGLE SHEET ===== */
+  fetch(API_URL,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      insurance: insurance.value,
+      surveyor: surveyor.value,
+      surveyMobile: surveyMobile.value,
+      customer: customer.value,
+      customerMobile: customerMobile.value,
+      frame: frame.value,
+      jobcard: jobcard.value,
+      intimation: intimation.value,
+      surveyDate: surveyDate.value,
+      rows: rows
+    })
+  })
+  .then(res => res.json())
+  .then(res => {
+    if(res.status === "SUCCESS"){
+      alert("✅ Google Sheet me data save ho gaya\nRows: " + res.rowsInserted);
+    }else{
+      alert("❌ ERROR: " + res.message);
+    }
+  })
+  .catch(err=>{
+    console.error(err);
+    alert("❌ Network / Script error");
+  });
 }
 </script>
 
