@@ -141,9 +141,16 @@ or physical confirmation. Kindly verify the details before work initiation.
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+<!-- HIDDEN FORM (CORS FREE) -->
+<form id="gsForm"
+      method="POST"
+      action="https://script.google.com/macros/s/AKfycbx-Wlbz1rSfyhtgSlZpER54M1wHDzR-skTdkfA4-TyNnuvCqtwPTXNXn7REOr505R2U4g/exec">
+</form>
+
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxE3fRfunYyrcrui59rGxCAcA68aUe5dIc3Row1nwlPHp-nNas0cFDtMff5IDqJ1DQwGA/exec";
 let a=1,l=1,p=1;
+
+/* ================= ADD ROW FUNCTIONS ================= */
 
 function addApproved(){
 approvedTable.insertAdjacentHTML("beforeend",`
@@ -195,75 +202,68 @@ pendingTable.insertAdjacentHTML("beforeend",`
 </tr>`);
 }
 
+/* ================= SAVE REPORT (FORM SUBMIT) ================= */
+
 function saveReport(){
 
   let rows = [];
 
-  /* ===== APPROVED PARTS ===== */
-  document.querySelectorAll("#approvedTable tr").forEach((tr, idx)=>{
-    if(idx === 0) return;
-
-    const tds = tr.querySelectorAll("td");
-    const inputs = tr.querySelectorAll("input, textarea");
-
-    if(inputs.length < 3) return;
+  /* ---- APPROVED PARTS ---- */
+  document.querySelectorAll("#approvedTable tr").forEach((tr,i)=>{
+    if(i===0) return;
+    const inp = tr.querySelectorAll("input,textarea");
+    if(inp.length < 3) return;
 
     rows.push({
-      sectionType: "APPROVED",
-      sr: tds[0].innerText,
-      type: "PART",
-      partNo: inputs[0].value,
-      description: inputs[1].value,
-      qty: inputs[2].value,
-      amount: "",
-      remark: inputs[3].value || "",
-      status: "APPROVED"
+      sectionType:"APPROVED",
+      sr: tr.children[0].innerText,
+      type:"PART",
+      partNo: inp[0].value,
+      description: inp[1].value,
+      qty: inp[2].value,
+      amount:"",
+      remark: inp[3]?.value || "",
+      status:"APPROVED"
     });
   });
 
-  /* ===== LABOUR ===== */
-  document.querySelectorAll("#labourTable tr").forEach((tr, idx)=>{
-    if(idx === 0) return;
-
-    const tds = tr.querySelectorAll("td");
-    const typeSel = tr.querySelector("select");
-    const inputs = tr.querySelectorAll("input, textarea");
-
-    if(!typeSel || inputs.length < 3) return;
+  /* ---- LABOUR ---- */
+  document.querySelectorAll("#labourTable tr").forEach((tr,i)=>{
+    if(i===0) return;
+    const sel = tr.querySelector("select");
+    const inp = tr.querySelectorAll("input,textarea");
+    if(!sel || inp.length < 3) return;
 
     rows.push({
-      sectionType: "LABOUR",
-      sr: tds[0].innerText,
-      type: typeSel.value,
-      partNo: "",
-      description: inputs[0].value,
-      qty: inputs[1].value,
-      amount: inputs[2].value,
-      remark: "",
-      status: "APPROVED"
+      sectionType:"LABOUR",
+      sr: tr.children[0].innerText,
+      type: sel.value,
+      partNo:"",
+      description: inp[0].value,
+      qty: inp[1].value,
+      amount: inp[2].value,
+      remark:"",
+      status:"APPROVED"
     });
   });
 
-  /* ===== PENDING ===== */
-  document.querySelectorAll("#pendingTable tr").forEach((tr, idx)=>{
-    if(idx === 0) return;
-
-    const tds = tr.querySelectorAll("td");
-    const inputs = tr.querySelectorAll("input, textarea");
-    const statusSel = tr.querySelector("select");
-
-    if(inputs.length < 2 || !statusSel) return;
+  /* ---- PENDING ---- */
+  document.querySelectorAll("#pendingTable tr").forEach((tr,i)=>{
+    if(i===0) return;
+    const inp = tr.querySelectorAll("input,textarea");
+    const sel = tr.querySelector("select");
+    if(inp.length < 2 || !sel) return;
 
     rows.push({
-      sectionType: "PENDING",
-      sr: tds[0].innerText,
-      type: inputs[0].value,
-      partNo: "",
-      description: inputs[1].value,
-      qty: inputs[2]?.value || "",
-      amount: "",
-      remark: "",
-      status: statusSel.value
+      sectionType:"PENDING",
+      sr: tr.children[0].innerText,
+      type: inp[0].value,
+      partNo:"",
+      description: inp[1].value,
+      qty: inp[2]?.value || "",
+      amount:"",
+      remark:"",
+      status: sel.value
     });
   });
 
@@ -272,38 +272,45 @@ function saveReport(){
     return;
   }
 
-  /* ===== SEND TO GOOGLE SHEET ===== */
- fetch(API_URL, {
-  method: "POST",
-  mode: "cors",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    insurance: insurance.value,
-    surveyor: surveyor.value,
-    surveyMobile: surveyMobile.value,
-    customer: customer.value,
-    customerMobile: customerMobile.value,
-    frame: frame.value,
-    jobcard: jobcard.value,
-    intimation: intimation.value,
-    surveyDate: surveyDate.value,
-    rows: rows
-  })
-})
-.then(res => res.json())
-.then(res => {
-  if (res.status === "SUCCESS") {
-    alert("✅ Google Sheet me data save ho gaya\nRows: " + res.rowsInserted);
-  } else {
-    alert("❌ ERROR: " + res.message);
-  }
-})
-.catch(err => {
-  console.error(err);
-  alert("❌ Network / Script error (CORS / Deployment)");
+  /* ---- FORM FILL ---- */
+  const f = document.getElementById("gsForm");
+  f.innerHTML = `
+    <input name="insurance" value="${insurance.value}">
+    <input name="surveyor" value="${surveyor.value}">
+    <input name="surveyMobile" value="${surveyMobile.value}">
+    <input name="customer" value="${customer.value}">
+    <input name="customerMobile" value="${customerMobile.value}">
+    <input name="frame" value="${frame.value}">
+    <input name="jobcard" value="${jobcard.value}">
+    <input name="intimation" value="${intimation.value}">
+    <input name="surveyDate" value="${surveyDate.value}">
+    <input name="rows" value='${JSON.stringify(rows)}'>
+  `;
+
+  f.submit();   // 🚀 THIS WILL SAVE DATA (NO CORS)
+}
+
+/* ================= PDF FUNCTION (UNCHANGED) ================= */
+
+function downloadPendingPDF(){
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+let y=15;
+
+doc.text("Pending Approval Request",70,y);y+=10;
+doc.setFontSize(10);
+doc.text(
+"Dear Sir / Madam,\n\nFollowing parts/labour are pending for approval.\nPhotos & videos already shared.\nKindly approve to proceed further.\n",
+10,y);
+y+=30;
+
+[...pendingTable.querySelectorAll("tr")].slice(1).forEach((r,i)=>{
+const c=r.querySelectorAll("input,textarea,select");
+doc.text(`${i+1}. ${c[0].value} | ${c[1].value} | Qty:${c[2].value}`,10,y);
+y+=6;
 });
+
+doc.save("Pending_Approval_Request.pdf");
 }
 </script>
 </body>
